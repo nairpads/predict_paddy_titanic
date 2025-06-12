@@ -35,7 +35,7 @@ if train_file and test_file:
         if 'embarked' in dataset.columns:
     # If all values are missing, fill with a default (choose 's', 'c', or 'q' as appropriate for your data)
         if dataset['embarked'].isnull().all():
-        dataset['embarked'].fillna('s', inplace=True)
+        dataset['embarked'].fillna('s', inplace=True)# fallback if mode is empty
         else:
         mode = dataset['embarked'].mode()
         if not mode.empty:
