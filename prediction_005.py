@@ -155,9 +155,6 @@ if train_file and test_file:
     st.subheader("📄 Report Summary")
     st.code(report)
 
-else:
-    st.info("👋 Please upload both the training and test CSV files to get started.")
-    st.code(report)
 
 else:
     st.info("👋 Please upload both the training and test CSV files to get started.")
