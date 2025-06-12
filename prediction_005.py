@@ -10,10 +10,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-# Title
 st.title("🚢 Titanic Survival Prediction + EDA")
 
-# Upload CSV files
 train_file = st.file_uploader("Upload train.csv", type=["csv"])
 test_file = st.file_uploader("Upload test.csv", type=["csv"])
 
@@ -21,51 +19,40 @@ if train_file and test_file:
     train = pd.read_csv(train_file)
     test = pd.read_csv(test_file)
 
-    # Combine datasets for preprocessing
+    # Preprocessing
     combine = [train, test]
     for dataset in combine:
-        # Normalize column names
         dataset.columns = dataset.columns.str.strip().str.lower()
-
-        # Fill missing age
         if 'age' in dataset.columns:
             dataset['age'].fillna(dataset['age'].median(), inplace=True)
-
-        # Fill missing embarked
         if 'embarked' in dataset.columns:
             mode = dataset['embarked'].mode()
             if not mode.empty:
                 dataset['embarked'].fillna(mode[0], inplace=True)
             else:
                 dataset['embarked'].fillna('s', inplace=True)
-
-        # Map embarked safely
-        dataset['embarked'] = dataset['embarked'].astype(str).str.lower().map({'s': 0, 'c': 1, 'q': 2})
-        dataset['embarked'].fillna(-1, inplace=True)
-        dataset['embarked'] = dataset['embarked'].astype(int)
-
-        # Map gender safely
+            dataset['embarked'] = dataset['embarked'].astype(str).str.lower().map({'s': 0, 'c': 1, 'q': 2})
+            dataset['embarked'].fillna(-1, inplace=True)
+            dataset['embarked'] = dataset['embarked'].astype(int)
         if 'sex' in dataset.columns:
             dataset['sex'] = dataset['sex'].astype(str).str.lower().map({'male': 0, 'female': 1})
             dataset['sex'].fillna(-1, inplace=True)
             dataset['sex'] = dataset['sex'].astype(int)
 
-    # Fix fare in test
     if 'fare' in test.columns:
         test['fare'].fillna(test['fare'].median(), inplace=True)
 
-    # Save PassengerId for output
     test_passenger_id = test['passengerid']
 
     # Drop unused columns
-    train = train.drop(['name', 'ticket', 'cabin', 'passengerid'], axis=1)
-    test = test.drop(['name', 'ticket', 'cabin', 'passengerid'], axis=1)
+    drop_cols = [c for c in ['name', 'ticket', 'cabin', 'passengerid'] if c in train.columns]
+    train = train.drop(drop_cols, axis=1)
+    test = test.drop([c for c in drop_cols if c in test.columns], axis=1)
 
-    # Show preview
     st.subheader("🔍 Dataset Preview")
     st.dataframe(train.head())
 
-    # EDA visualizations
+    # EDA plots
     st.subheader("📊 Survival Count")
     fig1, ax1 = plt.subplots()
     sns.countplot(x='survived', data=train, ax=ax1)
@@ -95,16 +82,17 @@ if train_file and test_file:
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # --- Robust Data Cleaning and Diagnostics ---
-    # Clean features
-    for df_name, df in [('X_train', X_train), ('X_val', X_val), ('test', test)]:
+    for df in [X_train, X_val, test]:
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df.fillna(0, inplace=True)
-    # Clean targets
-    for y_name, arr in [('y_train', y_train), ('y_val', y_val)]:
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+    for arr_name, arr in [('y_train', y_train), ('y_val', y_val)]:
         arr.replace([np.inf, -np.inf], np.nan, inplace=True)
         arr.fillna(0, inplace=True)
-        arr = arr.astype(int)
-        if y_name == 'y_train':
+        arr = pd.to_numeric(arr, errors='coerce').fillna(0).astype(int)
+        if arr_name == 'y_train':
             y_train = arr
         else:
             y_val = arr
@@ -116,6 +104,8 @@ if train_file and test_file:
     st.write("Any NaN in y_train?", pd.isnull(y_train).any())
     st.write("Any inf in X_train?", np.isinf(X_train.to_numpy()).any())
     st.write("Any inf in y_train?", np.isinf(y_train.to_numpy()).any())
+    st.write("X_train dtypes:", X_train.dtypes)
+    st.write("y_train dtype:", y_train.dtype)
     st.write("Unique values in y_train:", y_train.unique())
 
     # --- Model Training ---
@@ -138,14 +128,13 @@ if train_file and test_file:
 
     # Report
     report = f"""
-    Model Performance Report - Titanic
-    ----------------------------------
-    Logistic Regression Accuracy: {acc_log:.4f}
-    Random Forest Accuracy:       {acc_rf:.4f}
-    Final model used:             Random Forest (n_estimators=100)
-    """
+Model Performance Report - Titanic
+----------------------------------
+Logistic Regression Accuracy: {acc_log:.4f}
+Random Forest Accuracy:       {acc_rf:.4f}
+Final model used:             Random Forest (n_estimators=100)
+"""
 
-    # Feature importance
     st.subheader("🌲 Feature Importances (Random Forest)")
     feature_importance = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
     fig5, ax5 = plt.subplots()
@@ -158,7 +147,6 @@ if train_file and test_file:
         zip_file.writestr("submission.csv", submission.to_csv(index=False))
         zip_file.writestr("report.txt", report)
 
-    # Download
     st.subheader("📦 Download All Results")
     st.download_button(
         label="Download ZIP (submission + report)",
@@ -167,7 +155,6 @@ if train_file and test_file:
         mime="application/zip"
     )
 
-    # Report summary
     st.subheader("📄 Report Summary")
     st.code(report)
 
