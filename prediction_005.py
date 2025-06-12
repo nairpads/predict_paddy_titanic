@@ -31,25 +31,21 @@ if train_file and test_file:
         if 'age' in dataset.columns:
             dataset['age'].fillna(dataset['age'].median(), inplace=True)
 
-        # Fill missing embarked and map safely
+        # Fill missing embarked
         if 'embarked' in dataset.columns:
-            # If all values are missing, fill with a default (choose 's', 'c', or 'q' as appropriate for your data)
-                if dataset['embarked'].isnull().all():    pass
-                dataset['embarked'].fillna('s', inplace=True)# fallback if mode is empty
-        else:
             mode = dataset['embarked'].mode()
             if not mode.empty:
                 dataset['embarked'].fillna(mode[0], inplace=True)
             else:
                 dataset['embarked'].fillna('s', inplace=True)
 
-    # After filling, map and handle unmapped cases as before
-    dataset['embarked'] = dataset['embarked'].str.lower().map({'s': 0, 'c': 1, 'q': 2})
-    dataset['embarked'].fillna(-1, inplace=True)
-    dataset['embarked'] = dataset['embarked'].astype(int)
+        # Map embarked safely
+        dataset['embarked'] = dataset['embarked'].astype(str).str.lower().map({'s': 0, 'c': 1, 'q': 2})
+        dataset['embarked'].fillna(-1, inplace=True)
+        dataset['embarked'] = dataset['embarked'].astype(int)
 
-   # Map gender safely
-    if 'sex' in dataset.columns:
+        # Map gender safely
+        if 'sex' in dataset.columns:
             dataset['sex'] = dataset['sex'].astype(str).str.lower().map({'male': 0, 'female': 1})
             dataset['sex'].fillna(-1, inplace=True)
             dataset['sex'] = dataset['sex'].astype(int)
@@ -83,8 +79,12 @@ if train_file and test_file:
     st.pyplot()
 
     st.subheader("🎂 Age Distribution with Survival")
-    sns.histplot(data=train, x='age', hue='survived', bins=30, kde=True)
-    st.pyplot()
+    # Prevent ValueError: KDE requires more than one data point
+    if train['age'].dropna().shape[0] > 1:
+        sns.histplot(data=train, x='age', hue='survived', bins=30, kde=True)
+        st.pyplot()
+    else:
+        st.write("Not enough non-null 'age' values to plot distribution with KDE.")
 
     # Train/Validation split
     X = train.drop("survived", axis=1)
@@ -140,7 +140,7 @@ if train_file and test_file:
         mime="application/zip"
     )
 
-    # Report
+    # Report summary
     st.subheader("📄 Report Summary")
     st.code(report)
 
