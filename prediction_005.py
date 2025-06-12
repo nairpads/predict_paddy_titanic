@@ -34,7 +34,7 @@ if train_file and test_file:
         # Fill missing embarked and map safely
         if 'embarked' in dataset.columns:
     # If all values are missing, fill with a default (choose 's', 'c', or 'q' as appropriate for your data)
-        if dataset['embarked'].isnull().all():
+        if dataset['embarked'].isnull().all():pass
         dataset['embarked'].fillna('s', inplace=True)# fallback if mode is empty
         else:
         mode = dataset['embarked'].mode()
