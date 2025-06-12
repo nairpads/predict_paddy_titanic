@@ -19,32 +19,25 @@ if train_file and test_file:
     train = pd.read_csv(train_file)
     test = pd.read_csv(test_file)
 
-    # Preprocessing
-    combine = [train, test]
-    for dataset in combine:
+    # --- Preprocessing ---
+    for dataset in [train, test]:
         dataset.columns = dataset.columns.str.strip().str.lower()
         if 'age' in dataset.columns:
-            dataset['age'].fillna(dataset['age'].median(), inplace=True)
+            dataset['age'] = dataset['age'].fillna(dataset['age'].median())
         if 'embarked' in dataset.columns:
             mode = dataset['embarked'].mode()
-            if not mode.empty:
-                dataset['embarked'].fillna(mode[0], inplace=True)
-            else:
-                dataset['embarked'].fillna('s', inplace=True)
+            dataset['embarked'] = dataset['embarked'].fillna(mode[0] if not mode.empty else 's')
             dataset['embarked'] = dataset['embarked'].astype(str).str.lower().map({'s': 0, 'c': 1, 'q': 2})
-            dataset['embarked'].fillna(-1, inplace=True)
-            dataset['embarked'] = dataset['embarked'].astype(int)
+            dataset['embarked'] = dataset['embarked'].fillna(-1).astype(int)
         if 'sex' in dataset.columns:
             dataset['sex'] = dataset['sex'].astype(str).str.lower().map({'male': 0, 'female': 1})
-            dataset['sex'].fillna(-1, inplace=True)
-            dataset['sex'] = dataset['sex'].astype(int)
-
+            dataset['sex'] = dataset['sex'].fillna(-1).astype(int)
     if 'fare' in test.columns:
-        test['fare'].fillna(test['fare'].median(), inplace=True)
+        test['fare'] = test['fare'].fillna(test['fare'].median())
 
+    # Keep passenger id for output
     test_passenger_id = test['passengerid']
 
-    # Drop unused columns
     drop_cols = [c for c in ['name', 'ticket', 'cabin', 'passengerid'] if c in train.columns]
     train = train.drop(drop_cols, axis=1)
     test = test.drop([c for c in drop_cols if c in test.columns], axis=1)
@@ -52,7 +45,7 @@ if train_file and test_file:
     st.subheader("🔍 Dataset Preview")
     st.dataframe(train.head())
 
-    # EDA plots
+    # --- EDA ---
     st.subheader("📊 Survival Count")
     fig1, ax1 = plt.subplots()
     sns.countplot(x='survived', data=train, ax=ax1)
@@ -76,7 +69,7 @@ if train_file and test_file:
     else:
         st.write("Not enough non-null 'age' values to plot distribution with KDE.")
 
-    # Train/Validation split
+    # --- Data Split ---
     X = train.drop("survived", axis=1)
     y = train["survived"]
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -97,16 +90,19 @@ if train_file and test_file:
         else:
             y_val = arr
 
-    # Diagnostics
+    # --- DIAGNOSTICS ---
+    st.write("----DATA DIAGNOSTICS----")
     st.write("X_train shape:", X_train.shape)
     st.write("y_train shape:", y_train.shape)
+    st.write("X_train columns:", X_train.columns.tolist())
+    st.write("X_train dtypes:", X_train.dtypes)
+    st.write("y_train dtype:", y_train.dtype)
+    st.write("First 10 of y_train:", y_train.head(10))
+    st.write("Unique values in y_train:", pd.unique(y_train))
     st.write("Any NaN in X_train?", X_train.isnull().any().any())
     st.write("Any NaN in y_train?", pd.isnull(y_train).any())
     st.write("Any inf in X_train?", np.isinf(X_train.to_numpy()).any())
     st.write("Any inf in y_train?", np.isinf(y_train.to_numpy()).any())
-    st.write("X_train dtypes:", X_train.dtypes)
-    st.write("y_train dtype:", y_train.dtype)
-    st.write("Unique values in y_train:", y_train.unique())
 
     # --- Model Training ---
     logreg = LogisticRegression(max_iter=200)
@@ -119,14 +115,13 @@ if train_file and test_file:
     y_pred_rf = rf.predict(X_val)
     acc_rf = accuracy_score(y_val, y_pred_rf)
 
-    # Final predictions
+    # --- Submission ---
     final_predictions = rf.predict(test)
     submission = pd.DataFrame({
         "PassengerId": test_passenger_id,
         "Survived": final_predictions
     })
 
-    # Report
     report = f"""
 Model Performance Report - Titanic
 ----------------------------------
@@ -141,7 +136,7 @@ Final model used:             Random Forest (n_estimators=100)
     sns.barplot(x=feature_importance, y=feature_importance.index, ax=ax5)
     st.pyplot(fig5)
 
-    # Prepare ZIP
+    # --- Download ZIP ---
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zip_file:
         zip_file.writestr("submission.csv", submission.to_csv(index=False))
