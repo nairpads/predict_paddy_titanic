@@ -74,21 +74,32 @@ if train_file and test_file:
     y = train["survived"]
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # --- Robust Data Cleaning and Diagnostics ---
-    for df in [X_train, X_val, test]:
-        df.replace([np.inf, -np.inf], np.nan, inplace=True)
-        df.fillna(0, inplace=True)
-        for col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    # --- Strict Data Cleaning ---
+    # Only keep numeric columns in X
+    X_train = X_train.select_dtypes(include=[np.number])
+    X_val = X_val.select_dtypes(include=[np.number])
+    test = test.select_dtypes(include=[np.number])
 
-    for arr_name, arr in [('y_train', y_train), ('y_val', y_val)]:
-        arr.replace([np.inf, -np.inf], np.nan, inplace=True)
-        arr.fillna(0, inplace=True)
-        arr = pd.to_numeric(arr, errors='coerce').fillna(0).astype(int)
-        if arr_name == 'y_train':
-            y_train = arr
-        else:
-            y_val = arr
+    # Replace inf/nan and drop any row with nan in X or y
+    X_train.replace([np.inf, -np.inf], np.nan, inplace=True)
+    X_val.replace([np.inf, -np.inf], np.nan, inplace=True)
+    test.replace([np.inf, -np.inf], np.nan, inplace=True)
+    y_train = pd.to_numeric(y_train, errors='coerce')
+    y_val = pd.to_numeric(y_val, errors='coerce')
+
+    # Drop rows with nan in X_train or y_train
+    mask = X_train.notnull().all(axis=1) & y_train.notnull()
+    X_train = X_train[mask]
+    y_train = y_train[mask].astype(int)
+
+    mask_val = X_val.notnull().all(axis=1) & y_val.notnull()
+    X_val = X_val[mask_val]
+    y_val = y_val[mask_val].astype(int)
+
+    # Fill any remaining nans (shouldn't be any)
+    X_train.fillna(0, inplace=True)
+    X_val.fillna(0, inplace=True)
+    test.fillna(0, inplace=True)
 
     # --- DIAGNOSTICS ---
     st.write("----DATA DIAGNOSTICS----")
@@ -103,6 +114,7 @@ if train_file and test_file:
     st.write("Any NaN in y_train?", pd.isnull(y_train).any())
     st.write("Any inf in X_train?", np.isinf(X_train.to_numpy()).any())
     st.write("Any inf in y_train?", np.isinf(y_train.to_numpy()).any())
+    st.write("X_train and y_train shapes match:", X_train.shape[0] == y_train.shape[0])
 
     # --- Model Training ---
     logreg = LogisticRegression(max_iter=200)
@@ -131,7 +143,7 @@ Final model used:             Random Forest (n_estimators=100)
 """
 
     st.subheader("🌲 Feature Importances (Random Forest)")
-    feature_importance = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
+    feature_importance = pd.Series(rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
     fig5, ax5 = plt.subplots()
     sns.barplot(x=feature_importance, y=feature_importance.index, ax=ax5)
     st.pyplot(fig5)
