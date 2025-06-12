@@ -96,7 +96,9 @@ if train_file and test_file:
 
     # Ensure no NaN/inf in features and labels
     X_train = X_train.replace([np.inf, -np.inf], np.nan).fillna(0)
+    y_train = y_train.replace([np.inf, -np.inf], np.nan).fillna(0)
     X_val = X_val.replace([np.inf, -np.inf], np.nan).fillna(0)
+    y_val = y_val.replace([np.inf, -np.inf], np.nan).fillna(0)
     test = test.replace([np.inf, -np.inf], np.nan).fillna(0)
 
     # Logistic Regression
@@ -151,6 +153,10 @@ if train_file and test_file:
 
     # Report summary
     st.subheader("📄 Report Summary")
+    st.code(report)
+
+else:
+    st.info("👋 Please upload both the training and test CSV files to get started.")
     st.code(report)
 
 else:
