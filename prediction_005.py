@@ -67,22 +67,25 @@ if train_file and test_file:
 
     # EDA visualizations
     st.subheader("📊 Survival Count")
-    sns.countplot(x='survived', data=train)
-    st.pyplot()
+    fig1, ax1 = plt.subplots()
+    sns.countplot(x='survived', data=train, ax=ax1)
+    st.pyplot(fig1)
 
     st.subheader("👩‍🦰🧔 Survival by Gender")
-    sns.countplot(x='sex', hue='survived', data=train)
-    st.pyplot()
+    fig2, ax2 = plt.subplots()
+    sns.countplot(x='sex', hue='survived', data=train, ax=ax2)
+    st.pyplot(fig2)
 
     st.subheader("🛌 Survival by Passenger Class")
-    sns.countplot(x='pclass', hue='survived', data=train)
-    st.pyplot()
+    fig3, ax3 = plt.subplots()
+    sns.countplot(x='pclass', hue='survived', data=train, ax=ax3)
+    st.pyplot(fig3)
 
     st.subheader("🎂 Age Distribution with Survival")
-    # Prevent ValueError: KDE requires more than one data point
     if train['age'].dropna().shape[0] > 1:
-        sns.histplot(data=train, x='age', hue='survived', bins=30, kde=True)
-        st.pyplot()
+        fig4, ax4 = plt.subplots()
+        sns.histplot(data=train, x='age', hue='survived', bins=30, kde=True, ax=ax4)
+        st.pyplot(fig4)
     else:
         st.write("Not enough non-null 'age' values to plot distribution with KDE.")
 
@@ -90,6 +93,11 @@ if train_file and test_file:
     X = train.drop("survived", axis=1)
     y = train["survived"]
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Ensure no NaN/inf in features and labels
+    X_train = X_train.replace([np.inf, -np.inf], np.nan).fillna(0)
+    X_val = X_val.replace([np.inf, -np.inf], np.nan).fillna(0)
+    test = test.replace([np.inf, -np.inf], np.nan).fillna(0)
 
     # Logistic Regression
     logreg = LogisticRegression(max_iter=200)
@@ -122,8 +130,9 @@ if train_file and test_file:
     # Feature importance
     st.subheader("🌲 Feature Importances (Random Forest)")
     feature_importance = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
-    sns.barplot(x=feature_importance, y=feature_importance.index)
-    st.pyplot()
+    fig5, ax5 = plt.subplots()
+    sns.barplot(x=feature_importance, y=feature_importance.index, ax=ax5)
+    st.pyplot(fig5)
 
     # Prepare ZIP
     zip_buffer = io.BytesIO()
