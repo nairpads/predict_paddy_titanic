@@ -94,20 +94,36 @@ if train_file and test_file:
     y = train["survived"]
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Ensure no NaN/inf in features and labels
-    X_train = X_train.replace([np.inf, -np.inf], np.nan).fillna(0)
-    y_train = y_train.replace([np.inf, -np.inf], np.nan).fillna(0)
-    X_val = X_val.replace([np.inf, -np.inf], np.nan).fillna(0)
-    y_val = y_val.replace([np.inf, -np.inf], np.nan).fillna(0)
-    test = test.replace([np.inf, -np.inf], np.nan).fillna(0)
+    # --- Robust Data Cleaning and Diagnostics ---
+    # Clean features
+    for df_name, df in [('X_train', X_train), ('X_val', X_val), ('test', test)]:
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        df.fillna(0, inplace=True)
+    # Clean targets
+    for y_name, arr in [('y_train', y_train), ('y_val', y_val)]:
+        arr.replace([np.inf, -np.inf], np.nan, inplace=True)
+        arr.fillna(0, inplace=True)
+        arr = arr.astype(int)
+        if y_name == 'y_train':
+            y_train = arr
+        else:
+            y_val = arr
 
-    # Logistic Regression
+    # Diagnostics
+    st.write("X_train shape:", X_train.shape)
+    st.write("y_train shape:", y_train.shape)
+    st.write("Any NaN in X_train?", X_train.isnull().any().any())
+    st.write("Any NaN in y_train?", pd.isnull(y_train).any())
+    st.write("Any inf in X_train?", np.isinf(X_train.to_numpy()).any())
+    st.write("Any inf in y_train?", np.isinf(y_train.to_numpy()).any())
+    st.write("Unique values in y_train:", y_train.unique())
+
+    # --- Model Training ---
     logreg = LogisticRegression(max_iter=200)
     logreg.fit(X_train, y_train)
     y_pred_log = logreg.predict(X_val)
     acc_log = accuracy_score(y_val, y_pred_log)
 
-    # Random Forest
     rf = RandomForestClassifier(n_estimators=100, random_state=42)
     rf.fit(X_train, y_train)
     y_pred_rf = rf.predict(X_val)
@@ -154,7 +170,6 @@ if train_file and test_file:
     # Report summary
     st.subheader("📄 Report Summary")
     st.code(report)
-
 
 else:
     st.info("👋 Please upload both the training and test CSV files to get started.")
