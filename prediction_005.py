@@ -48,8 +48,8 @@ if train_file and test_file:
     dataset['embarked'].fillna(-1, inplace=True)
     dataset['embarked'] = dataset['embarked'].astype(int)
 
-        # Map gender safely
-             if 'sex' in dataset.columns:
+   # Map gender safely
+    if 'sex' in dataset.columns:
             dataset['sex'] = dataset['sex'].str.lower().map({'male': 0, 'female': 1})
             dataset['sex'].fillna(-1, inplace=True)
             dataset['sex'] = dataset['sex'].astype(int)
